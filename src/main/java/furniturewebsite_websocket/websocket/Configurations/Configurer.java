@@ -12,17 +12,12 @@ public class Configurer implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws")
-                .setAllowedOrigins("http://localhost:3000") // Adjust the origin to match your frontend URL
-                .withSockJS();
+        registry.addEndpoint("/live-tracking").setAllowedOriginPatterns("*").withSockJS();
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
+        registry.enableSimpleBroker("/topic");
         registry.setApplicationDestinationPrefixes("/app");
-
-        // Add /topic for broadcasting messages
-        registry.enableSimpleBroker("/topic", "/group", "/user","/product","/admin");
-        registry.setUserDestinationPrefix("/user");
     }
 }

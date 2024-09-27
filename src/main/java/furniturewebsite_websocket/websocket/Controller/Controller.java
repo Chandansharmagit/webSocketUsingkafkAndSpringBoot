@@ -12,6 +12,7 @@ import furniturewebsite_websocket.websocket.Service.SecondsTemplateServicelayer.
 import furniturewebsite_websocket.websocket.Service.SubscribedemailService;
 import furniturewebsite_websocket.websocket.Service.TemlateUploadingServive_layer.TemlateUploadingServive;
 import furniturewebsite_websocket.websocket.Service.TemplateUploding_four_Service_layer.TemplateUploding_fourService_layer;
+import furniturewebsite_websocket.websocket.Service.kafka_massaging_server.Tracking_Producer;
 import furniturewebsite_websocket.websocket.Service.massageData;
 import furniturewebsite_websocket.websocket.presentation.Client_Chat_WoodenNepal.WoodenNepal;
 import furniturewebsite_websocket.websocket.presentation.EmailSaving.Email_Saving;
@@ -59,42 +60,9 @@ public class Controller {
     private Es se;
 
 
-    @MessageMapping("/message")
-    @SendTo("/group/public")
-    public Message receiveMessage(@Payload Message message) {
-        System.out.println("Received message: " + message.getContent());
-        massageSaving.save(message);
-        return message;
-    }
 
-    @MessageMapping("/private-messages")
-    public void receiveMessageprivate(@Payload Message message) {
-        System.out.println("Sending private message from " + message.getSenderName() +
-                " to " + message.getReceiverName() + ": " + message.getContent());
-        messagingTemplate.convertAndSendToUser(message.getReceiverName(), "/private", message);
-    }
 
-    @GetMapping("/messages")
-    public List<Message> gettingall(@RequestParam(required = false) String receiverName) {
-        if (receiverName == null) {
-            return massageSaving.findAll(); // Return all messages
-        }
-        return massageSaving.findByReceiverName(receiverName);
-    }
 
-    @MessageMapping("/sendMessage")
-    public void sendMessage(@Payload Message message) {
-        messagingTemplate.convertAndSend("/topic/messages", message);
-    }
-
-    @MessageMapping("/chat")
-    @SendTo("/product/messages")
-    public WoodenNepal handleChatMessage(@Payload WoodenNepal woodenNepal) {
-        if ("chandan@12".equals(woodenNepal.getUserId())) {
-            messagingTemplate.convertAndSend("/topic/admin", woodenNepal);
-        }
-        return woodenNepal;
-    }
 
     // Email Subscriptions
 
@@ -295,6 +263,59 @@ public class Controller {
             return ResponseEntity.ok(Collections.singletonList(saving));
         }
 
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+    @Autowired
+    private Tracking_Producer trackingProducer;
+
+
+
+    // Endpoint for sending messages
+    @MessageMapping("/sendMessage")
+    @SendTo("/topic/chat")
+    public Message sendMessage(String message) {
+        // Optionally, send the message to Kafka or another service
+        trackingProducer.sendMessage(message);
+
+        // Create a response JSON object
+        return new Message("Server received: " + message);
+    }
+
+    // Handle admin replies (can be used to send replies back to clients)
+    @MessageMapping("/sendAdminReply")
+    @SendTo("/topic/admin-replies")
+    public Message handleAdminReply(Message message) {
+        // Return the message to be sent to WebSocket clients
+        return new Message("Admin replied: " + message.getContent());
+    }
+
+    public static class Message {
+        private String content;
+
+        public Message() {}
+
+        public Message(String content) {
+            this.content = content;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public void setContent(String content) {
+            this.content = content;
+        }
     }
 
 }
